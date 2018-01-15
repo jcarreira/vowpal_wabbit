@@ -1,7 +1,17 @@
 #include "parser.h"
 #include "vw.h"
 #include "parse_regressor.h"
+
+#include <sys/time.h>
+
 using namespace std;
+
+uint64_t get_time_us() {
+  struct timeval tv; 
+  gettimeofday(&tv, NULL);
+  return 1000000UL * tv.tv_sec + tv.tv_usec;
+}
+
 
 void dispatch_example(vw& all, example& ec)
 {
@@ -64,11 +74,24 @@ template <class T, void(*f)(T, example*)> void generic_driver(vw& all, T context
 {
   example* ec = nullptr;
 
-  while ( all.early_terminate == false )
-    if ((ec = VW::get_example(all.p)) != nullptr)
+  unsigned long int count = 0;
+  auto start = get_time_us();
+  while ( all.early_terminate == false ) {
+    if ((ec = VW::get_example(all.p)) != nullptr) {
+      count++;
+      if (count % 10000 == 0) {
+        auto elapsed = get_time_us() - start;
+        std::cout
+          << std::fixed
+          << "samples/sec: " << 1.0 * count / elapsed * 1000 * 1000
+          << "count: " << count
+          << "\n";
+      }
       f(context, ec);
+    }
     else
       break;
+  }
   if (all.early_terminate) //drain any extra examples from parser.
     while ((ec = VW::get_example(all.p)) != nullptr)
       VW::finish_example(all, ec);
@@ -77,6 +100,7 @@ template <class T, void(*f)(T, example*)> void generic_driver(vw& all, T context
 
 void process_multiple(vector<vw*> alls, example* ec)
 {
+  std::cout << "process_multiple" << std::endl;
   // start with last as the first instance will free the example as it is the owner
   for (auto it = alls.rbegin(); it != alls.rend(); ++it)
     process_example(**it, ec);
@@ -84,6 +108,7 @@ void process_multiple(vector<vw*> alls, example* ec)
 
 void generic_driver(vector<vw*> alls)
 {
+  std::cout << "generic_driver1" << std::endl;
   generic_driver<vector<vw*>, process_multiple>(**alls.begin(), alls);
 
   // skip first as it already called end_examples()
@@ -93,5 +118,7 @@ void generic_driver(vector<vw*> alls)
 }
 
 void generic_driver(vw& all)
-{ generic_driver<vw&, process_example>(all, all); }
+{ 
+  std::cout << "generic_driver2" << std::endl;
+  generic_driver<vw&, process_example>(all, all); }
 }

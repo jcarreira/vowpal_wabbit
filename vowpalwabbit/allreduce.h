@@ -10,6 +10,9 @@ license as described in the file LICENSE.
 #ifdef _WIN32
 #include <WinSock2.h>
 #include <WS2tcpip.h>
+
+#include <cstdlib>
+
 typedef unsigned int uint32_t;
 typedef unsigned short uint16_t;
 typedef int socklen_t;
@@ -41,6 +44,7 @@ typedef int socket_t;
 #endif
 #include "vw_exception.h"
 #include <assert.h>
+#include <iostream>
 
 const size_t ar_buf_size = 1<<16;
 
@@ -276,5 +280,6 @@ public:
       all_reduce_init();
     reduce<T, f>((char*)buffer, n*sizeof(T));
     broadcast((char*)buffer, n*sizeof(T));
+    std::cout << "ALLREDUCE " << n << std::endl;
   }
 };
